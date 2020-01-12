@@ -1,4 +1,5 @@
 %include('header_init.tpl', heading='Manage your attributes')
+%include('js.tpl')
 
 <h2>List of current attributes:</h2>
 <table class="table">
@@ -61,9 +62,29 @@
 		<div class="checkbox">
 			<label><input name="mode" type="checkbox" id="att_mode_quanti" placeholder="Mode"> The min value is preferred (decreasing utility function)</label>
 		</div>
-
+		<div class="checkbox">
+			<label><input name="ref_point" type="checkbox" id="att_mode_ref" placeholder="Mode"> Would you like to choose a reference point? (between Min and Max)</label>
+		</div>
+		<div class="form-group hidden" id="ref_point_group">
+			<label for="att_ref_point_quanti">Reference point:</label>
+			<input type="text" class="form-control" id="att_ref_point_quanti" placeholder="Value">
+		</div>
+		
 		<button type="submit" class="btn btn-success" id="submit_quanti">Submit</button>
 	</div>
+	<script>
+		box = $("#att_mode_ref");
+		ref_group = $("#ref_point_group");
+		function sync () {
+			if (box.is(':checked')) {
+				ref_group.removeClass('hidden');
+			} else {
+				ref_group.addClass('hidden');
+			}
+		}
+		box.click(sync);
+		sync();
+	</script>
 	
 	<!------------ FORM FOR A QUALITATIVE ATTRIBUTE ------------>
 	<div id="form_quali">
@@ -343,7 +364,9 @@ $(function() {
 							$('#att_value_min_quanti').val(attribute_edit.val_min);
 							$('#att_value_max_quanti').val(attribute_edit.val_max);
 							$('#att_method_quanti option[value='+attribute_edit.method+']').prop('selected', true);
-							$('#att_mode_quanti').prop('checked', (attribute_edit.mode=="Normal" ? false : true));
+							$('#att_mode_ref').prop('checked', (attribute_edit.mode=="Normal" ? false : true));
+							$('#att_ref_point_quanti').val(attribute_edit.ref_point);
+							$('#att_mode_ref').click(sync);
 						} 
 						else if (attribute_edit.type == "Qualitative") {
 							update_method_button("Qualitative"); //update the active type of attribute
@@ -377,7 +400,11 @@ $(function() {
 		var name = $('#att_name_quanti').val(),
 			unit = $('#att_unit_quanti').val(),
 			val_min = parseInt($('#att_value_min_quanti').val()),
+			ref_point = parseInt($('#att_ref_point_quanti').val()),
 			val_max = parseInt($('#att_value_max_quanti').val());
+		if (!ref_point) {
+			ref_point = val_max;
+		}
 
 		var method = "PE";
 		if ($("select option:selected").text() == "Probability Equivalence") {
@@ -391,14 +418,21 @@ $(function() {
 		}
 
 		var mode = ($('input[name=mode]').is(':checked') ? "Reversed" : "Normal");
+		console.log(mode);
 		
 
-		if (!(name || unit || val_min || val_max) || isNaN(val_min) || isNaN(val_max)) {
+		if (!(name || unit || ref_point || val_min || val_max) || isNaN(ref_point) || isNaN(val_min) || isNaN(val_max)) {
 			alert('Please fill correctly all the fields');
 		} else if (isAttribute(name) && (edit_mode == false)) {
 			alert ("An attribute with the same name already exists");
 		} else if (val_min > val_max) {
 			alert ("Minimum value must be inferior to maximum value");
+		} else if (ref_point > val_max) {
+			alert ("Please choose the maximum value the same as your Reference Point ");
+		//} else if ((ref_point < val_max) && (ref_point > val_min)) {
+		//	alert ("If you want to assess losses please choose the maximum value as the Reference point. If you want to assess gains please choose the minimum value as the Reference point.");
+		} else if (ref_point < val_min) {
+			alert ("Please choose the minimum value the same as your Reference Point ");
 		} else if (isThereUnderscore([name, unit], String(val_min), String(val_max))==false) {
 			alert("Please don't write an underscore ( _ ) in your values.\nBut you can put spaces");
 		}
@@ -416,6 +450,7 @@ $(function() {
 						String(parseFloat(val_min)+.75*(parseFloat(val_max)-parseFloat(val_min)))
 					],
 					'val_max': val_max,
+					'ref_point': ref_point,
 					'method': method,
 					'mode': mode,
 					'completed': 'False',
@@ -439,6 +474,7 @@ $(function() {
 							String(parseFloat(val_min)+.75*(parseFloat(val_max)-parseFloat(val_min)))
 						],
 						'val_max': val_max,
+						'ref_point': ref_point,
 						'method': method,
 						'mode': mode,
 						'completed': 'False',
