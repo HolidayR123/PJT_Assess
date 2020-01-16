@@ -400,9 +400,16 @@ $(function() {
 		var name = $('#att_name_quanti').val(),
 			unit = $('#att_unit_quanti').val(),
 			val_min = parseInt($('#att_value_min_quanti').val()),
-			ref_point = parseInt($('#att_ref_point_quanti').val()),
 			val_max = parseInt($('#att_value_max_quanti').val());
-		if (!ref_point) {
+
+		var ref_point;
+		if ($('#att_mode_ref').is(':checked')) {
+			ref_point = parseInt($('#att_ref_point_quanti').val());
+			if (isNaN(ref_point)) {
+				alert('Please uncheck the box or define a valid reference point');
+				return;
+			}
+		} else {
 			ref_point = val_max;
 		}
 
@@ -419,36 +426,40 @@ $(function() {
 
 		var mode = ($('input[name=mode]').is(':checked') ? "Reversed" : "Normal");
 		console.log(mode);
-		
 
-		if (!(name || unit || ref_point || val_min || val_max) || isNaN(ref_point) || isNaN(val_min) || isNaN(val_max)) {
+		function calcMed(val_min, val_max) {
+			val_med = []
+			n = 4
+			for (var i = 1; i < n; i++) {
+				val_med.push(val_min + (i / n) * (val_max - val_min))
+			}
+			return val_med;
+		}
+		
+		if (!(name || unit  || val_min || val_max) || isNaN(val_min) || isNaN(val_max)) {
 			alert('Please fill correctly all the fields');
 		} else if (isAttribute(name) && (edit_mode == false)) {
 			alert ("An attribute with the same name already exists");
 		} else if (val_min > val_max) {
 			alert ("Minimum value must be inferior to maximum value");
 		} else if (ref_point > val_max) {
-			alert ("Please choose the maximum value the same as your Reference Point ");
+			alert ("Please choose the Reference Point between Min and Max ");
 		//} else if ((ref_point < val_max) && (ref_point > val_min)) {
 		//	alert ("If you want to assess losses please choose the maximum value as the Reference point. If you want to assess gains please choose the minimum value as the Reference point.");
 		} else if (ref_point < val_min) {
-			alert ("Please choose the minimum value the same as your Reference Point ");
+			alert ("Please choose the Reference Point between Min and Max ");
 		} else if (isThereUnderscore([name, unit], String(val_min), String(val_max))==false) {
 			alert("Please don't write an underscore ( _ ) in your values.\nBut you can put spaces");
 		}
 		
 		else {
 			if (edit_mode==false) {
-				assess_session.attributes.push({
+				var attribute = {
 					"type": "Quantitative",
 					"name": name,
 					'unit': unit,
 					'val_min': val_min,
-					'val_med': [
-						String(parseFloat(val_min)+.25*(parseFloat(val_max)-parseFloat(val_min))),
-						String(parseFloat(val_min)+.50*(parseFloat(val_max)-parseFloat(val_min))), //yes, it's (val_max+val_min)/2, but it looks better ^^
-						String(parseFloat(val_min)+.75*(parseFloat(val_max)-parseFloat(val_min)))
-					],
+					'val_med': calcMed(val_min, ref_point),
 					'val_max': val_max,
 					'ref_point': ref_point,
 					'method': method,
@@ -460,19 +471,19 @@ $(function() {
 						'points': {},
 						'utility': {}
 					}
-				});
+				};
+				if (ref_point != val_max ) {
+					attribute.val_med_losses = calcMed(ref_point, val_max);
+				}
+				assess_session.attributes.push(attribute);
 			} else {
 				if (confirm("Are you sure you want to edit the attribute? All assessements will be deleted") == true) {
-					assess_session.attributes[edited_attribute]={
+					var attribute = {
 						"type": "Quantitative",
 						"name": name,
 						'unit': unit,
 						'val_min': val_min,
-						'val_med': [
-							String(parseFloat(val_min)+.25*(parseFloat(val_max)-parseFloat(val_min))),
-							String(parseFloat(val_min)+.50*(parseFloat(val_max)-parseFloat(val_min))), //yes, it's (val_max+val_min)/2, but it looks better ^^
-							String(parseFloat(val_min)+.75*(parseFloat(val_max)-parseFloat(val_min)))
-						],
+						'val_med': calcMed(val_min, ref_point, val_max),
 						'val_max': val_max,
 						'ref_point': ref_point,
 						'method': method,
@@ -485,6 +496,11 @@ $(function() {
 							'utility': {}
 						}
 					};
+					if (ref_point != val_max ) {
+						attribute.val_med_losses = calcMed(ref_point, val_max);
+					}
+					assess_session.attributes[edited_attribute]=attribute;
+					
 				}	
 				edit_mode=false;
 				$('#add_attribute h2').text("Add a new attribute");

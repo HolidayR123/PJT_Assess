@@ -72,6 +72,18 @@
 						text_table += '<td><button type="button" class="btn btn-default btn-xs answer_quest_'+(attribute.type=="Qualitative"?"quali":"quanti")+'" id="q_' + attribute.name + '_' + attribute.val_med[ii] + '_' + ii + '">Assess</button>' + '</td></tr>';
 					};
 				};
+				if (attribute.ref_point != attribute.val_max ) {
+					text_table += '<tr><td>' + attribute.ref_point + '</td><td> : </td><td>'+(attribute.mode=="Normal"?'1 -> 0':'0 -> 1')+'</td></tr>';
+					for (var ii=0, len=attribute.val_med_losses.length; ii<len; ii++){
+						text_table += '<tr><td>' + attribute.val_med_losses[ii] + '</td><td> : </td>';
+	
+						if(attribute.questionnaire.points[attribute.val_med_losses[ii]]){
+							text_table += '<td>' + attribute.questionnaire.points[attribute.val_med_losses[ii]] + '</td>';
+						} else {
+							text_table += '<td><button type="button" class="btn btn-default btn-xs answer_quest_'+(attribute.type=="Qualitative"?"quali":"quanti")+'" id="q_' + attribute.name + '_' + attribute.val_med_losses[ii] + '_' + ii + '">Assess</button>' + '</td></tr>';
+						};
+					};
+				}
 			} else {
 				for (var key in attribute.questionnaire.points){
 					text_table += '<tr><td>' + key + '</td><td> : </td>'+
@@ -88,9 +100,12 @@
 
 			if (attribute.type=="Quantitative") {
 				if (attribute.questionnaire.number) {
-					text_table += '<td><button type="button" class="btn btn-default btn-xs calc_util_quanti" id="u_0_' + attribute.name + '">Utility function</button>';
+					
 					if (attribute.ref_point != attribute.val_max) {
-						text_table += '<button type="button" class="btn btn-default btn-xs calc_util_quanti" id="u_1_' + attribute.name + '">Utility function 2</button>';
+												
+						text_table += '<td><button type="button" class="btn btn-default btn-xs calc_util_quanti" id="u_0_' + attribute.name + '"> Losses Utility Function </button>';
+						text_table += '<button type="button" class="btn btn-default btn-xs calc_util_quanti" id="u_1_' + attribute.name + '"> Gains Utility Function </button>';
+					} else { text_table += '<td><button type="button" class="btn btn-default btn-xs calc_util_quanti" id="u_0_' + attribute.name + '"> Gains Utility Function </button>';
 					}
 					text_table += '</td>'
 						// ICI pour utility function
@@ -153,9 +168,15 @@
 				}
 			}
 
-			var val_min = assess_session.attributes[indice].val_min,
-				val_max = assess_session.attributes[indice].val_max,
-				unit = assess_session.attributes[indice].unit,
+			var val_min, val_max;
+			if (parseFloat(question_val) < assess_session.attributes[indice].ref_point) {
+				val_min = assess_session.attributes[indice].val_min;
+				val_max = assess_session.attributes[indice].ref_point;
+			} else {
+				val_min = assess_session.attributes[indice].ref_point;
+				val_max = assess_session.attributes[indice].val_max;
+			}
+			var unit = assess_session.attributes[indice].unit,
 				method = assess_session.attributes[indice].method,
 				mode = assess_session.attributes[indice].mode;
 
@@ -764,8 +785,17 @@
 				points=[];
 			
 			for (key in points_dict) {
-				points.push([parseFloat(key), parseFloat(points_dict[key])]);
+				var x = parseFloat(key),
+					y = parseFloat(points_dict[key]);
+				console.log('x', x);
+				if ((graph_type == '0' && x < assess_session.attributes[indice].ref_point)
+					|| (graph_type == '1' && x > assess_session.attributes[indice].ref_point)) {	
+					points.push([x, y]);
+				}
 			};
+
+			console.log('points', points);
+			console.log('points_dict', points_dict);
 			
 			points.push([val_min, (mode == "Normal" ? 0 : 1)]);
 			points.push([val_max, (mode == "Normal" ? 1 : 0)]);
